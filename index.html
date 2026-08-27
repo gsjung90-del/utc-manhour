@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>UTC 맨아워</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,"Noto Sans KR",sans-serif;background:#f4f6f8;color:#17202a}
+header{background:#17202a;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:10}
+h1{font-size:20px;margin:0}.sub{font-size:12px;opacity:.75;margin-top:4px}
+.wrap{padding:10px;max-width:1500px;margin:auto}
+.panel{background:#fff;border-radius:12px;padding:12px;margin-bottom:10px;box-shadow:0 2px 8px #00000012}
+button,input{font-size:16px}
+button{border:0;border-radius:8px;padding:10px 12px;background:#17202a;color:#fff;touch-action:manipulation;cursor:pointer}
+button.secondary{background:#e9edf1;color:#17202a}
+button.danger{background:#c0392b}
+input{border:1px solid #ccd3da;border-radius:8px;padding:10px 11px;min-width:0}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.roster{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.person{display:flex;gap:6px;align-items:center;background:#f0f3f5;border-radius:8px;padding:7px 9px;cursor:pointer}
+.person input{width:18px;height:18px}
+details{margin-top:8px}
+summary{display:inline-block;background:#17202a;color:#fff;padding:10px 12px;border-radius:8px;cursor:pointer}
+.manager{margin-top:8px;border:1px solid #d9dee3;border-radius:10px;padding:10px}
+.memberAdd{display:grid;grid-template-columns:110px 1fr auto;gap:8px}
+.memberList{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.memberItem{display:grid;grid-template-columns:110px 1fr 72px;gap:6px;align-items:center;background:#f2f4f6;border-radius:8px;padding:8px 10px}
+.memberItem input{width:100%}
+.stats{display:flex;gap:8px;flex-wrap:wrap}.stat{background:#f0f3f5;border-radius:9px;padding:9px 12px}.stat b{font-size:18px}
+.clock{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.clockbox{background:#f0f3f5;border-radius:9px;padding:8px 12px}
+.tzCalc{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.tzBox{display:flex;flex-direction:column;gap:4px}.tzBox input{width:110px;text-align:center}
+.workerCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.workerCard{border:1px solid #d9dee3;border-radius:10px;padding:10px}
+.workerCard h3{margin:0 0 8px;font-size:16px}
+.taskList{display:flex;flex-direction:column;gap:7px}
+.taskRow{display:grid;grid-template-columns:1fr 34px;gap:6px}
+.taskRow input{width:100%;text-align:center;font-weight:700}
+.addTask{margin-top:7px;width:100%;background:#e9edf1;color:#17202a}
+.mhResult{margin-top:8px;text-align:right;font-size:13px}
+.overlapBox{margin-top:8px;padding:9px;border-radius:8px;background:#fff4f2;border:1px solid #ffd2cc;font-size:13px}.overlapBox.ok{background:#f1faf3;border-color:#ccebd3}
+.currentDateBar{display:flex;gap:10px;flex-wrap:wrap;background:#f0f3f5;border-radius:9px;padding:9px 10px;margin-bottom:8px}
+.sharedTimelineScroller{overflow-x:auto;border:1px solid #d9dee3;border-radius:10px;-webkit-overflow-scrolling:touch}
+.sharedTimelineInner{min-width:4142px}
+.workerTimeline{border-bottom:1px solid #d9dee3;background:#fff}
+.workerTimelineTitle{padding:8px 10px;background:#f0f3f5;font-weight:700;display:flex;justify-content:space-between}
+.miniGrid{display:grid;grid-template-columns:110px repeat(144,28px);position:relative}
+.miniCell{height:38px;border-right:1px solid #edf0f2;border-bottom:1px solid #edf0f2;display:flex;align-items:center;justify-content:center;font-size:11px}
+.miniHead{background:#fafbfc;font-weight:700}
+.miniBar{background:#2f80ed;color:#fff;font-weight:900}.miniBar.over{background:#e74c3c}
+.miniHour{border-right:2px solid #aab2b9}
+.nowLine{position:absolute;top:0;bottom:0;width:3px;background:#111;z-index:5;pointer-events:none}
+.nowLine:before{content:"현재";position:absolute;top:0;left:4px;background:#111;color:#fff;font-size:10px;padding:2px 4px;border-radius:3px}
+.miniSummary{padding:7px 10px;font-size:12px;color:#66717c}
+.notice{font-size:12px;color:#66717c;margin-top:6px}
+.bulkLayout{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:12px;align-items:start}
+.bulkTool{border:1px solid #d9dee3;border-radius:10px;padding:10px;background:#fafbfc}
+.bulkTool h3{margin:0 0 8px;font-size:15px}
+.bulkTool input{width:100%;text-align:center;font-weight:700}
+.bulkPeople{display:flex;flex-direction:column;gap:6px;margin:8px 0;max-height:220px;overflow:auto}
+.bulkPerson{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #e3e7ea;border-radius:8px;padding:7px;cursor:pointer}
+.bulkPerson input{width:18px;height:18px}
+.bulkActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.bulkMsg{font-size:12px;color:#66717c;margin-top:7px;min-height:18px}
+.erpGrid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:12px;align-items:start}
+.erpTool{border:1px solid #d9dee3;border-radius:10px;padding:10px;background:#fafbfc}
+.erpTool h3{margin:0 0 8px;font-size:15px}
+.erpTool input{width:100%;font-size:14px}
+.employeeId{font-size:12px;color:#66717c}
+.erpTableWrap{overflow-x:auto;border:1px solid #9aa4ad;background:#fff;margin-top:8px}
+.erpTable{border-collapse:collapse;table-layout:fixed;min-width:700px;width:100%}
+.erpTable th,.erpTable td{border:1px solid #aeb7bf;height:34px;padding:5px 8px;text-align:center;background:#fff;white-space:nowrap}
+.erpTable thead th,.erpTable .rowHead{background:#e5e9ed;font-weight:700}
+.erpTable .rowHead{width:42px;color:#59636d}
+.erpTable small{font-size:10px;font-weight:400;color:#59636d}
+@media(max-width:760px){.wrap{padding:7px}.panel{padding:9px}.workerCards,.bulkLayout,.erpGrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1>UTC 맨아워</h1><div class="sub">UTC 21:00 시작 · KST 표시 · 동일 근무자 작업 중복만 빨간색</div></header>
+<div class="wrap">
+
+<div class="panel">
+  <div class="tzCalc">
+    <div class="tzBox"><label>UTC</label><input id="utcCalc" inputmode="numeric" maxlength="4" placeholder="1320"></div>
+    <div>⇄</div>
+    <div class="tzBox"><label>KST</label><input id="kstCalc" inputmode="numeric" maxlength="4" placeholder="2220"></div>
+  </div>
+  <div id="tzMsg" class="notice">UTC는 KST보다 9시간 느립니다.</div>
+</div>
+
+<div class="panel">
+  <b>우리 반</b>
+  <div id="roster" class="roster"></div>
+  <div class="controls" style="margin-top:10px">
+    <details id="manager">
+      <summary>근무자 관리</summary>
+      <div class="manager">
+        <div class="memberAdd">
+          <input id="memberId" type="text" maxlength="12" placeholder="사번 (예: T240049)">
+          <input id="memberName" type="text" placeholder="근무자 이름">
+          <button id="addMemberBtn" type="button">추가</button>
+        </div>
+        <div id="memberList" class="memberList"></div>
+      </div>
+    </details>
+    <button id="resetTimesBtn" class="danger" type="button">시간 전체 초기화</button>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="stats">
+    <div class="stat">근무자 <b id="workerCount">0</b>명</div>
+    <div class="stat">총 맨아워 <b id="totalMh">0.0</b> h</div>
+    <div class="stat">동일 근무자 최대 중복 <b id="maxOverlap">0</b></div>
+  </div>
+  <div class="clock">
+    <div class="clockbox">UTC <b id="utcClock">--:--:--</b></div>
+    <div class="clockbox">KST <b id="kstClock">--:--:--</b></div>
+  </div>
+  <div id="overlapBox" class="overlapBox ok"><div id="overlapList">같은 근무자 내 작업시간 중복 없음</div></div>
+</div>
+
+<div class="panel">
+  <b>근무자별 맨아워 입력</b>
+  <div class="bulkLayout" style="margin-top:8px">
+    <div id="workerCards" class="workerCards"></div>
+    <aside class="bulkTool">
+      <h3>여러 근무자 일괄 입력</h3>
+      <label for="bulkTime">UTC 작업시간</label>
+      <input id="bulkTime" type="text" inputmode="text" maxlength="9" placeholder="0000-2359">
+      <div class="bulkActions">
+        <button id="bulkSelectAll" type="button" class="secondary">전체 선택</button>
+        <button id="bulkClearSelect" type="button" class="secondary">선택 해제</button>
+      </div>
+      <div id="bulkPeople" class="bulkPeople"></div>
+      <button id="bulkApplyBtn" type="button" style="width:100%">선택 근무자에게 추가</button>
+      <div id="bulkMsg" class="bulkMsg" aria-live="polite"></div>
+    </aside>
+  </div>
+</div>
+
+<div class="panel">
+  <b>ERP 입력 데이터 생성</b>
+  <div class="erpGrid" style="margin-top:8px">
+    <div>
+      <div class="notice">사번과 이름을 저장해두고, ERP 대상 근무자를 체크해 같은 시간대를 한 번에 생성할 수 있습니다. 작업일자는 UTC 기준입니다.</div>
+      <div id="erpPeople" class="bulkPeople" style="margin-top:8px"></div>
+    </div>
+    <div class="erpTool">
+      <h3>ERP 복붙용 데이터</h3>
+      <label>작업일자 (UTC 기준)</label>
+      <input id="erpDate" type="date">
+      <label style="display:block;margin-top:7px">작업시간</label>
+      <input id="erpTime" type="text" maxlength="9" placeholder="1400-1430">
+      <div class="bulkActions">
+        <button id="erpGenerate" type="button">ERP 행 생성</button>
+        <button id="erpSelectAll" type="button" class="secondary">전체 선택</button>
+        <button id="erpClear" type="button" class="secondary">선택 해제</button>
+      </div>
+      <div class="erpTableWrap">
+        <table class="erpTable">
+          <thead><tr>
+            <th class="rowHead"></th>
+            <th>A<br><small>사번</small></th>
+            <th>B<br><small>이름 자동</small></th>
+            <th>C<br><small>시작일</small></th>
+            <th>D<br><small>시작시간</small></th>
+            <th>E<br><small>종료일</small></th>
+            <th>F<br><small>종료시간</small></th>
+          </tr></thead>
+          <tbody id="erpTableBody"><tr><th class="rowHead">1</th><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody>
+        </table>
+      </div>
+      <textarea id="erpOutput" readonly style="position:absolute;left:-10000px;top:-10000px"></textarea>
+      <button id="erpCopyBtn" type="button" style="width:100%;margin-top:8px">표 전체 복사</button>
+      <div id="erpMsg" class="notice"></div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <b>근무자별 UTC / KST 타임라인</b>
+  <div class="currentDateBar">
+    <b id="currentDate">----</b>
+    <span>UTC <b id="timelineUtcNow">--:--</b></span>
+    <span>KST <b id="timelineKstNow">--:--</b></span>
+  </div>
+  <div id="workerTimelines"></div>
+</div>
+
+</div>
+<script>
+(function(){
+const KEY="utc_manhour_clean_v1";
+let workers=[];
+let selected=new Set();
+let bulkSelected=new Set();
+let erpSelected=new Set();
+
+function load(){
+  try{
+    const saved = localStorage.getItem(KEY);
+    workers = saved ? JSON.parse(saved) : [];
+  }catch(e){ workers = []; }
+  
+  // 최초 실행 시 기본 근무자 1명 자동 생성 (빈 화면 방지)
+  if(!Array.isArray(workers) || workers.length === 0){
+    workers = [{employeeId:"T240001", name:"근무자 1", tasks:[{start:"",end:""}]}];
+  } else {
+    workers = workers.map(w=>({
+      employeeId: w.employeeId || "",
+      name: w.name || "근무자",
+      tasks: Array.isArray(w.tasks) && w.tasks.length ? w.tasks : [{start:"",end:""}]
+    }));
+  }
+}
+
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(workers)); }catch(e){}
+}
+
+function hhmmToMin(v){
+  if(!/^\d{4}$/.test(v))return null;
+  const h=+v.slice(0,2),m=+v.slice(2,4);
+  return h<24&&m<60?h*60+m:null;
+}
+function taskSlots(t){
+  const s=hhmmToMin(t.start),e=hhmmToMin(t.end);
+  if(s===null||e===null||s===e)return [];
+  const out=[];
+  for(let i=0;i<144;i++){
+    const x=i*10;
+    if(s<e?(x>=s&&x<e):(x>=s||x<e))out.push(i);
+  }
+  return out;
+}
+function workerSlots(w){
+  const set=new Set();
+  w.tasks.forEach(t=>taskSlots(t).forEach(s=>set.add(s)));
+  return [...set];
+}
+function workerHours(w){return w.tasks.reduce((a,t)=>a+taskSlots(t).length/6,0)}
+function sameOverlap(w,slot){
+  let c=0;w.tasks.forEach(t=>{if(taskSlots(t).includes(slot))c++});return c>=2;
+}
+function fmt(slot){const m=(slot%144)*10;return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0")}
+
+function renderRoster(){
+  const root=document.getElementById("roster");root.innerHTML="";
+  workers.forEach((w,i)=>{
+    const lab=document.createElement("label");lab.className="person";
+    const cb=document.createElement("input");cb.type="checkbox";cb.checked=selected.has(i);
+    cb.addEventListener("change",()=>{cb.checked?selected.add(i):selected.delete(i);renderTimelines();renderCards()});
+    const sp=document.createElement("span");sp.textContent=w.name;
+    lab.append(cb,sp);root.appendChild(lab);
+  });
+}
+function renderMemberList(){
+  const root=document.getElementById("memberList");root.innerHTML="";
+  workers.forEach((w,i)=>{
+    const row=document.createElement("div");row.className="memberItem";
+    const id=document.createElement("input");id.value=w.employeeId||"";id.placeholder="T240049";
+    id.addEventListener("change",()=>{w.employeeId=id.value.trim();save();renderAll()});
+    const name=document.createElement("input");name.value=w.name;name.placeholder="이름";
+    name.addEventListener("change",()=>{w.name=name.value.trim()||"근무자";save();renderAll()});
+    const b=document.createElement("button");b.type="button";b.className="danger";b.textContent="삭제";
+    b.addEventListener("click",()=>{
+      workers.splice(i,1);
+      selected=new Set([...selected].filter(x=>x!==i).map(x=>x>i?x-1:x));
+      bulkSelected=new Set([...bulkSelected].filter(x=>x!==i).map(x=>x>i?x-1:x));
+      erpSelected=new Set([...erpSelected].filter(x=>x!==i).map(x=>x>i?x-1:x));
+      save();renderAll();
+    });
+    row.append(id,name,b);root.appendChild(row);
+  });
+}
+function renderBulkPeople(){
+  const root=document.getElementById("bulkPeople");if(!root)return;root.innerHTML="";
+  workers.forEach((w,i)=>{
+    const lab=document.createElement("label");lab.className="bulkPerson";
+    const cb=document.createElement("input");cb.type="checkbox";cb.checked=bulkSelected.has(i);
+    cb.addEventListener("change",()=>{if(cb.checked)bulkSelected.add(i);else bulkSelected.delete(i);});
+    const sp=document.createElement("span");sp.textContent=w.name;
+    lab.append(cb,sp);root.appendChild(lab);
+  });
+}
+function parseRange(raw){
+  const clean=(raw||"").replace(/[^0-9-]/g,"").replace(/--+/g,"-").slice(0,9);
+  const p=clean.split("-");
+  if(p.length!==2)return null;
+  const start=(p[0]||"").slice(0,4), end=(p[1]||"").slice(0,4);
+  if(hhmmToMin(start)===null || hhmmToMin(end)===null || start===end)return null;
+  return {start,end,clean};
+}
+function applyBulkTime(){
+  const inp=document.getElementById("bulkTime");
+  const msg=document.getElementById("bulkMsg");
+  const parsed=parseRange(inp.value);
+  if(!parsed){msg.textContent="예: 1320-1330 형식으로 입력하세요.";return;}
+  const targets=[...bulkSelected].filter(i=>workers[i]);
+  if(!targets.length){msg.textContent="근무자를 한 명 이상 선택하세요.";return;}
+  targets.forEach(i=>workers[i].tasks.push({start:parsed.start,end:parsed.end}));
+  save();inp.value="";
+  msg.textContent=`${targets.length}명에게 ${parsed.clean} 추가됨`;
+  renderAll();
+}
+function renderErpPeople(){
+  const root=document.getElementById("erpPeople");if(!root)return;root.innerHTML="";
+  workers.forEach((w,i)=>{
+    const lab=document.createElement("label");lab.className="bulkPerson";
+    const cb=document.createElement("input");cb.type="checkbox";cb.checked=erpSelected.has(i);
+    cb.addEventListener("change",()=>{cb.checked?erpSelected.add(i):erpSelected.delete(i)});
+    const sp=document.createElement("span");sp.innerHTML=`${w.name}${w.employeeId?` <span class="employeeId">${w.employeeId}</span>`:" <span class=\"employeeId\">사번 없음</span>"}`;
+    lab.append(cb,sp);root.appendChild(lab);
+  });
+}
+function fmtDateDot(v){const p=v.split("-");return p.length===3?`${p[0]}.${p[1]}.${p[2]}`:""}
+function generateErpRows(){
+  const date=document.getElementById("erpDate").value;
+  const parsed=parseRange(document.getElementById("erpTime").value);
+  const out=document.getElementById("erpOutput");
+  const body=document.getElementById("erpTableBody");
+  const msg=document.getElementById("erpMsg");
+  if(!date){msg.textContent="작업일자를 선택하세요.";return}
+  if(!parsed){msg.textContent="시간을 예: 1400-1430 형식으로 입력하세요.";return}
+  const targets=[...erpSelected].filter(i=>workers[i]).sort((a,b)=>{
+    const aNum=parseInt((workers[a].employeeId||"").replace(/\D/g,""),10)||0;
+    const bNum=parseInt((workers[b].employeeId||"").replace(/\D/g,""),10)||0;
+    return aNum-bNum;
+  });
+  if(!targets.length){msg.textContent="ERP 대상 근무자를 한 명 이상 선택하세요.";return}
+  const missing=targets.filter(i=>!/^T/i.test(workers[i].employeeId||""));
+  if(missing.length){msg.textContent="T로 시작하는 사번이 없는 근무자가 있습니다.";return}
+  const d=fmtDateDot(date);
+  const rows=targets.map(i=>[workers[i].employeeId,"",d,parsed.start,d,parsed.end]);
+  body.innerHTML="";
+  rows.forEach((row,ri)=>{
+    const tr=document.createElement("tr");
+    const rh=document.createElement("th");rh.className="rowHead";rh.textContent=ri+1;tr.appendChild(rh);
+    row.forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td)});
+    body.appendChild(tr);
+  });
+  out.value=rows.map(r=>r.join("\t")).join("\n");
+  msg.textContent=rows.length+"개 행 생성 완료 · 사번 낮은 순 정렬";
+}
+function prepareCopy(){
+  const out=document.getElementById("erpOutput");
+  const msg=document.getElementById("erpMsg");
+  if(!out.value){msg.textContent="먼저 ERP 행을 생성하세요.";return}
+  const fallback=()=>{
+    out.style.position="fixed";out.style.left="0";out.style.top="0";out.style.width="2px";out.style.height="2px";
+    out.focus();out.select();out.setSelectionRange(0,out.value.length);
+    let ok=false;try{ok=document.execCommand("copy")}catch(e){}
+    out.style.position="absolute";out.style.left="-10000px";out.style.top="-10000px";
+    msg.textContent=ok?"복사 완료. ERP/엑셀에 붙여넣으세요.":"자동 복사 제한됨. 텍스트를 직접 선택해 복사하세요.";
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(out.value).then(()=>msg.textContent="복사 완료. 붙여넣으면 열별로 자동 분리됩니다.").catch(fallback);
+  }else fallback();
+}
+
+function renderCards(){
+  const root=document.getElementById("workerCards");root.innerHTML="";
+  const visible=selected.size?[...selected].filter(i=>workers[i]):workers.map((_,i)=>i);
+  visible.forEach(i=>{
+    const w=workers[i],card=document.createElement("div");card.className="workerCard";
+    const h=document.createElement("h3");h.textContent=w.name;card.appendChild(h);
+    const list=document.createElement("div");list.className="taskList";
+    w.tasks.forEach((t,j)=>{
+      const row=document.createElement("div");row.className="taskRow";
+      const inp=document.createElement("input");inp.type="text";inp.inputMode="text";inp.maxLength=9;inp.placeholder="0000-2359";
+      inp.value=(t.start||t.end)?`${t.start||""}-${t.end||""}`:"";
+      inp.addEventListener("input",()=>{
+        const raw=inp.value.replace(/[^0-9-]/g,"").replace(/--+/g,"-").slice(0,9);
+        if(inp.value!==raw)inp.value=raw;
+        const p=raw.split("-");
+        t.start=(p[0]||"").slice(0,4);t.end=(p[1]||"").slice(0,4);save();
+        mh.textContent=`총 맨아워 ${workerHours(w).toFixed(1)} h`;
+        renderTimelines();renderOverlap();renderStats();
+      });
+      const del=document.createElement("button");del.type="button";del.className="danger";del.textContent="×";
+      del.addEventListener("click",()=>{if(w.tasks.length>1)w.tasks.splice(j,1);else w.tasks[0]={start:"",end:""};save();renderAll()});
+      row.append(inp,del);list.appendChild(row);
+    });
+    card.appendChild(list);
+    const add=document.createElement("button");add.type="button";add.className="addTask";add.textContent="+ 맨아워 추가";
+    add.addEventListener("click",()=>{w.tasks.push({start:"",end:""});save();renderAll()});
+    card.appendChild(add);
+    const mh=document.createElement("div");mh.className="mhResult";mh.textContent=`총 맨아워 ${workerHours(w).toFixed(1)} h`;card.appendChild(mh);
+    root.appendChild(card);
+  });
+}
+function renderOverlap(){
+  const out=[];
+  workers.forEach(w=>{
+    for(let a=0;a<w.tasks.length;a++)for(let b=a+1;b<w.tasks.length;b++){
+      const A=new Set(taskSlots(w.tasks[a])),both=taskSlots(w.tasks[b]).filter(s=>A.has(s));
+      if(!both.length)continue;
+      let st=both[0],pr=both[0],ranges=[];
+      for(let k=1;k<both.length;k++){if(both[k]===pr+1)pr=both[k];else{ranges.push([st,pr+1]);st=pr=both[k]}}
+      ranges.push([st,pr+1]);
+      ranges.forEach(r=>out.push(`${w.name} 작업 ${a+1}↔${b+1} ${fmt(r[0])}~${fmt(r[1])}`));
+    }
+  });
+  const box=document.getElementById("overlapBox"),list=document.getElementById("overlapList");
+  box.classList.toggle("ok",!out.length);list.innerHTML=out.length?out.join("<br>"):"같은 근무자 내 작업시간 중복 없음";
+}
+function renderStats(){
+  document.getElementById("workerCount").textContent=workers.length;
+  document.getElementById("totalMh").textContent=workers.reduce((a,w)=>a+workerHours(w),0).toFixed(1);
+  let mx=0;workers.forEach(w=>{for(let s=0;s<144;s++){let c=0;w.tasks.forEach(t=>{if(taskSlots(t).includes(s))c++});mx=Math.max(mx,c)}})
+  document.getElementById("maxOverlap").textContent=mx;
+}
+function renderTimelines(){
+  const root=document.getElementById("workerTimelines");root.innerHTML="";
+  const visible=selected.size?[...selected].filter(i=>workers[i]):workers.map((_,i)=>i);
+  const sc=document.createElement("div");sc.className="sharedTimelineScroller";
+  const inner=document.createElement("div");inner.className="sharedTimelineInner";
+  const order=Array.from({length:144},(_,k)=>(126+k)%144);
+  visible.forEach(i=>{
+    const w=workers[i],card=document.createElement("div");card.className="workerTimeline";
+    const title=document.createElement("div");title.className="workerTimelineTitle";title.innerHTML=`<span>${w.name}</span><span>${workerHours(w).toFixed(1)} h</span>`;card.appendChild(title);
+    const grid=document.createElement("div");grid.className="miniGrid";
+    function row(label,type){
+      let d=document.createElement("div");d.className="miniCell miniHead";d.textContent=label;grid.appendChild(d);
+      order.forEach((slot,idx)=>{
+        const c=document.createElement("div");c.className="miniCell "+(idx%6===5?"miniHour ":"");
+        if(type==="utc"){c.classList.add("miniHead");if(idx%6===0)c.textContent=String(Math.floor(slot/6)).padStart(2,"0")+":00"}
+        if(type==="kst"){c.classList.add("miniHead");if(idx%6===0){const k=(slot+54)%144;c.textContent=String(Math.floor(k/6)).padStart(2,"0")+":00"}}
+        if(type==="bar"&&workerSlots(w).includes(slot)){c.classList.add("miniBar");if(sameOverlap(w,slot))c.classList.add("over");c.textContent="■"}
+        grid.appendChild(c);
+      });
+    }
+    row("UTC","utc");row("KST","kst");row("작업시간","bar");
+    const now=document.createElement("div");now.className="nowLine";now.dataset.now="1";grid.appendChild(now);
+    card.appendChild(grid);
+    const sum=document.createElement("div");sum.className="miniSummary";sum.textContent=w.tasks.map((t,n)=>`${n+1}. ${t.start||"----"}-${t.end||"----"}`).join(" · ");card.appendChild(sum);
+    inner.appendChild(card);
+  });
+  sc.appendChild(inner);root.appendChild(sc);updateClock();
+}
+function updateClock(){
+  const now=new Date();
+  document.getElementById("utcClock").textContent=now.toISOString().slice(11,19);
+  document.getElementById("kstClock").textContent=new Intl.DateTimeFormat("ko-KR",{timeZone:"Asia/Seoul",hour12:false,hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(now);
+  document.getElementById("timelineUtcNow").textContent=now.toISOString().slice(11,16);
+  document.getElementById("timelineKstNow").textContent=new Intl.DateTimeFormat("ko-KR",{timeZone:"Asia/Seoul",hour12:false,hour:"2-digit",minute:"2-digit"}).format(now);
+  document.getElementById("currentDate").textContent=new Intl.DateTimeFormat("ko-KR",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit",weekday:"short"}).format(now);
+  const min=now.getUTCHours()*60+now.getUTCMinutes()+now.getUTCSeconds()/60;
+  const shifted=(min-1260+1440)%1440;
+  const x=110+(shifted/10)*28;
+  document.querySelectorAll("[data-now='1']").forEach(el=>el.style.left=x+"px");
+}
+function renderAll(){renderRoster();renderMemberList();renderBulkPeople();renderErpPeople();renderCards();renderOverlap();renderStats();renderTimelines()}
+
+document.getElementById("addMemberBtn").addEventListener("click",()=>{
+  const idInput=document.getElementById("memberId");
+  const nameInput=document.getElementById("memberName");
+  const employeeId=idInput.value.trim(),name=nameInput.value.trim();if(!name)return;
+  workers.push({employeeId,name,tasks:[{start:"",end:""}]});
+  idInput.value="";nameInput.value="";save();renderAll();
+});
+["memberId","memberName"].forEach(id=>document.getElementById(id).addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();document.getElementById("addMemberBtn").click()}}));
+document.getElementById("resetTimesBtn").addEventListener("click",()=>{
+  if(!confirm("입력한 시간만 모두 초기화할까요? 근무자 목록은 유지됩니다."))return;
+  workers.forEach(w=>w.tasks=[{start:"",end:""}]);save();renderAll();
+});
+document.getElementById("utcCalc").addEventListener("input",e=>{
+  const v=e.target.value.replace(/\D/g,"").slice(0,4);e.target.value=v;const m=hhmmToMin(v),o=document.getElementById("kstCalc");
+  if(m===null){o.value="";return}const x=m+540;o.value=String(Math.floor((x%1440)/60)).padStart(2,"0")+String(x%60).padStart(2,"0")
+});
+document.getElementById("kstCalc").addEventListener("input",e=>{
+  const v=e.target.value.replace(/\D/g,"").slice(0,4);e.target.value=v;const m=hhmmToMin(v),o=document.getElementById("utcCalc");
+  if(m===null){o.value="";return}const x=(m-540+1440)%1440;o.value=String(Math.floor(x/60)).padStart(2,"0")+String(x%60).padStart(2,"0")
+});
+
+document.getElementById("bulkTime").addEventListener("input",e=>{
+  const clean=e.target.value.replace(/[^0-9-]/g,"").replace(/--+/g,"-").slice(0,9);
+  if(e.target.value!==clean)e.target.value=clean;
+});
+document.getElementById("bulkSelectAll").addEventListener("click",()=>{
+  bulkSelected=new Set(workers.map((_,i)=>i));
+  renderBulkPeople();
+});
+document.getElementById("bulkClearSelect").addEventListener("click",()=>{
+  bulkSelected.clear();
+  renderBulkPeople();
+});
+document.getElementById("bulkApplyBtn").addEventListener("click",applyBulkTime);
+
+document.getElementById("erpSelectAll").addEventListener("click",()=>{erpSelected=new Set(workers.map((_,i)=>i));renderErpPeople()});
+document.getElementById("erpClear").addEventListener("click",()=>{erpSelected.clear();renderErpPeople()});
+document.getElementById("erpGenerate").addEventListener("click",generateErpRows);
+document.getElementById("erpCopyBtn").addEventListener("click",prepareCopy);
+document.getElementById("erpTime").addEventListener("input",e=>{const clean=e.target.value.replace(/[^0-9-]/g,"").replace(/--+/g,"-").slice(0,9);if(e.target.value!==clean)e.target.value=clean});
+const today=new Date();
+document.getElementById("erpDate").value=today.toISOString().slice(0,10);
+
+load();renderAll();updateClock();setInterval(updateClock,1000);
+})();
+</script>
+</body>
+</html>
