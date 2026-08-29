@@ -289,6 +289,16 @@ async function loadManhours(){
 
 function hhmmToMin(v){ const h=+v.slice(0,2), m=+v.slice(2,4); return h*60+m; }
 
+// 정렬용: 이름 -> 사번의 숫자부분(가장 낮은 값). 명단에 없으면 Infinity(맨 아래로)
+function employeeSortKey(name){
+  const matches = findEmployeeIds(name);
+  if(!matches.length) return Infinity;
+  const nums = matches
+    .map(m => parseInt(String(m.id||"").replace(/\D/g,""), 10))
+    .filter(n => !isNaN(n));
+  return nums.length ? Math.min(...nums) : Infinity;
+}
+
 // 사람별 블록 목록 구성: {itemNo, itemId, title, start, end, slots:[...]}
 function buildPersonBlocks(){
   const map = new Map(); // name -> blocks[]
@@ -339,7 +349,7 @@ function renderTimelines(personBlocks){
   const inner = document.createElement("div"); inner.className = "sharedTimelineInner";
   const order = Array.from({length:144},(_,k)=>(126+k)%144); // UTC 21:00부터 시작 (기존 도구와 동일)
 
-  [...personBlocks.keys()].sort((a,b)=>a.localeCompare(b,"ko")).forEach(name=>{
+  [...personBlocks.keys()].sort((a,b)=> employeeSortKey(a)-employeeSortKey(b) || a.localeCompare(b,"ko")).forEach(name=>{
     const blocks = personBlocks.get(name);
     const slotHit = new Map();
     blocks.forEach(b=> blockSlots(b).forEach(s=> slotHit.set(s, (slotHit.get(s)||0)+1) ));
