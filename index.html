@@ -26,20 +26,20 @@ input,select{border:1px solid #ccd3da;border-radius:8px;padding:9px 10px}
 .stat b{font-size:16px}
 
 .sharedTimelineScroller{overflow-x:auto;border:1px solid #d9dee3;border-radius:10px;-webkit-overflow-scrolling:touch}
-.sharedTimelineInner{min-width:0}
-.workerTimeline{border-bottom:1px solid #d9dee3;background:#fff}
-.workerTimelineTitle{padding:7px 10px;background:#f0f3f5;font-weight:700;font-size:13px}
-.miniGrid{display:grid;position:relative}
-.miniCell{height:30px;border-right:1px solid #edf0f2;border-bottom:1px solid #edf0f2;display:flex;align-items:center;justify-content:center;font-size:10px}
-.miniHead{background:#fafbfc;font-weight:700}
-.miniBar{background:#2f80ed;color:#fff;font-weight:900;cursor:pointer;position:relative}
-.miniBar.over{background:#e74c3c}
-.miniBar.hoverlit{outline:2px solid #f5c518;outline-offset:-2px;z-index:2}
-.miniHour{border-right:2px solid #aab2b9}
-.miniCell.gapBefore{border-left:2px dashed #c7cdd3}
-.timelineNotice{font-size:11px;color:#8a93a0;padding:4px 10px 0}
-.nowLine{position:absolute;top:0;bottom:0;width:2px;background:#111;z-index:5;pointer-events:none}
-.badge{position:absolute;top:1px;left:2px;font-size:8px;background:#111;color:#fff;border-radius:3px;padding:0 3px;line-height:12px}
+.timelineNotice{font-size:11px;color:#8a93a0;padding:4px 2px 6px}
+.ganttWrap{display:flex;flex-direction:column;background:#fff}
+.ganttHeader{display:flex;background:#fafbfc;border-bottom:1px solid #d9dee3;position:sticky;top:0;z-index:4}
+.ganttName{flex:0 0 116px;width:116px;padding:6px 10px;font-weight:700;font-size:12.5px;display:flex;align-items:center;border-right:1px solid #edf0f2;background:#f7f8f9}
+.ganttHeaderSpacer{color:#8a93a0;font-weight:700;font-size:11px}
+.ganttTrack{position:relative;flex:1;min-height:24px}
+.ganttHeaderTrack{height:24px}
+.ganttHeaderTrack .tick{position:absolute;top:0;bottom:0;border-left:1px solid #e3e7ea;font-size:10px;color:#8a93a0;padding:3px 0 0 4px;white-space:nowrap}
+.ganttRow{display:flex;border-bottom:1px solid #edf0f2}
+.ganttRow:nth-child(odd) .ganttTrack{background:#fcfcfd}
+.ganttBlock{position:absolute;min-width:14px;border-radius:5px;background:#2f80ed;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;box-shadow:0 1px 2px #00000022}
+.ganttBlock.over{background:#e74c3c}
+.ganttBlock.hoverlit{outline:2px solid #f5c518;outline-offset:-2px;z-index:3}
+.ganttGap{position:absolute;top:0;bottom:0;border-left:2px dashed #c7cdd3;pointer-events:none}
 
 table.erpTable{border-collapse:collapse;width:100%;font-size:13px}
 table.erpTable th,table.erpTable td{border:1px solid #d9dee3;padding:7px 8px;text-align:left}
@@ -358,7 +358,7 @@ function renderTimelines(personBlocks){
 
   const fullOrder = Array.from({length:144},(_,k)=>(126+k)%144); // UTC 21:00부터 시작 (기존 도구와 동일)
   const activeSlots = computeActiveSlots(personBlocks);
-  const order = fullOrder.filter(slot=> activeSlots.has(slot)); // 전원 공란인 칸은 제거
+  const order = fullOrder.filter(slot=> activeSlots.has(slot)); // 전원 공란인 구간은 압축
 
   if(!order.length){ root.innerHTML = '<div class="notice">표시할 작업 시간이 없습니다.</div>'; return; }
 
@@ -366,83 +366,97 @@ function renderTimelines(personBlocks){
   if(hiddenCount>0){
     const notice = document.createElement("div"); notice.className = "timelineNotice";
     const hrs = Math.round(hiddenCount/6*10)/10;
-    notice.textContent = `전원 공란인 구간(${hrs}시간)은 숨겼습니다. 점선으로 표시된 칸은 이전 칸과 시간이 이어지지 않는 지점입니다.`;
+    notice.textContent = `전원 공란인 구간(${hrs}시간)은 압축했습니다. 점선은 시간이 끊기는 지점입니다.`;
     root.appendChild(notice);
   }
 
-  // order 배열에서 이전 슬롯과 연속되지 않는(=건너뛴) 지점의 index 모음
-  const gapBeforeSet = new Set();
+  const posOf = new Map(); order.forEach((slot,idx)=> posOf.set(slot, idx));
+  const total = order.length;
+  const pct = idx => (idx/total*100);
+
+  // 이전 슬롯과 연속되지 않는(=건너뛴) 지점들의 위치(%)
+  const gapPositions = [];
   order.forEach((slot,idx)=>{
     if(idx===0) return;
     const prevPos = (order[idx-1]-126+144)%144, curPos = (slot-126+144)%144;
-    if((curPos-prevPos+144)%144 !== 1) gapBeforeSet.add(idx);
+    if((curPos-prevPos+144)%144 !== 1) gapPositions.push(pct(idx));
   });
-  const colTemplate = `110px repeat(${order.length},20px)`;
+  // 정시(HH:00) 눈금
+  const hourTicks = [];
+  order.forEach((slot,idx)=>{ if(slot%6===0) hourTicks.push({ pct: pct(idx), label: String(Math.floor(slot/6)).padStart(2,"0")+":00" }); });
 
-  const sc = document.createElement("div"); sc.className = "sharedTimelineScroller";
-  const inner = document.createElement("div"); inner.className = "sharedTimelineInner";
+  const NAME_W = 116, PX_PER_UNIT = 6; // 압축된 시간 한 칸(10분)당 최소 픽셀
+  const scroller = document.createElement("div"); scroller.className = "sharedTimelineScroller";
+  const wrap = document.createElement("div"); wrap.className = "ganttWrap";
+  wrap.style.minWidth = (NAME_W + Math.max(320, total*PX_PER_UNIT)) + "px";
+
+  // 시간축 헤더 — 근무자마다 반복하지 않고 전체에서 한 번만
+  const header = document.createElement("div"); header.className = "ganttHeader";
+  const headerSpacer = document.createElement("div"); headerSpacer.className = "ganttName ganttHeaderSpacer"; headerSpacer.textContent = "UTC";
+  header.appendChild(headerSpacer);
+  const headerTrack = document.createElement("div"); headerTrack.className = "ganttTrack ganttHeaderTrack";
+  hourTicks.forEach(t=>{
+    const tick = document.createElement("div"); tick.className = "tick"; tick.style.left = t.pct+"%"; tick.textContent = t.label;
+    headerTrack.appendChild(tick);
+  });
+  gapPositions.forEach(p=>{
+    const g = document.createElement("div"); g.className = "ganttGap"; g.style.left = p+"%"; headerTrack.appendChild(g);
+  });
+  header.appendChild(headerTrack);
+  wrap.appendChild(header);
 
   [...personBlocks.keys()].sort((a,b)=> employeeSortKey(a)-employeeSortKey(b) || a.localeCompare(b,"ko")).forEach(name=>{
     const blocks = personBlocks.get(name);
+
+    // 압축 좌표계에서 각 작업의 위치(left)/폭(width, 칸 수) 계산
+    const posBlocks = blocks.map(b=>{
+      const idxs = blockSlots(b).map(s=> posOf.get(s));
+      return { ...b, _left: Math.min(...idxs), _width: idxs.length };
+    }).sort((a,b)=> a._left-b._left);
+
+    // 겹치는 작업은 서로 다른 레인(줄)에 쌓아서 가려지지 않게 함
+    const laneEnds = [];
+    posBlocks.forEach(b=>{
+      let lane = laneEnds.findIndex(end => end <= b._left);
+      if(lane===-1){ lane = laneEnds.length; laneEnds.push(b._left+b._width); }
+      else laneEnds[lane] = b._left+b._width;
+      b._lane = lane;
+    });
+    const laneCount = Math.max(1, laneEnds.length);
+    const rowHeight = laneCount*24+10;
+
+    // 이 사람 기준 같은 시간대에 작업이 2개 이상 겹치는지(=겹침 표시용)
     const slotHit = new Map();
-    blocks.forEach(b=> blockSlots(b).forEach(s=> slotHit.set(s, (slotHit.get(s)||0)+1) ));
-    // 겹치는 두 작업이라도 각자 자기 번호 배지를 잃지 않도록, 블록별 "시작 슬롯"을 따로 기록
-    const blocksByFirstSlot = new Map();
-    blocks.forEach(b=>{
-      const first = blockSlots(b)[0];
-      if(first===undefined) return;
-      if(!blocksByFirstSlot.has(first)) blocksByFirstSlot.set(first, []);
-      blocksByFirstSlot.get(first).push(b);
-    });
+    blocks.forEach(b=> blockSlots(b).forEach(s=> slotHit.set(s,(slotHit.get(s)||0)+1)));
 
-    const card = document.createElement("div"); card.className = "workerTimeline";
-    const title = document.createElement("div"); title.className = "workerTimelineTitle"; title.textContent = name;
-    card.appendChild(title);
+    const row = document.createElement("div"); row.className = "ganttRow";
+    const nameCell = document.createElement("div"); nameCell.className = "ganttName"; nameCell.textContent = name;
+    row.appendChild(nameCell);
 
-    const grid = document.createElement("div"); grid.className = "miniGrid";
-    grid.style.gridTemplateColumns = colTemplate;
-    const head = document.createElement("div"); head.className="miniCell miniHead"; head.textContent="UTC"; grid.appendChild(head);
-    order.forEach((slot,idx)=>{
-      const c = document.createElement("div");
-      c.className = "miniCell miniHead " + (slot%6===5?"miniHour ":"") + (gapBeforeSet.has(idx)?"gapBefore ":"");
-      if(slot%6===0) c.textContent = String(Math.floor(slot/6)).padStart(2,"0")+":00";
-      if(gapBeforeSet.has(idx)) c.title = "이전 시간과 이어지지 않음(공란 구간 생략됨)";
-      grid.appendChild(c);
+    const track = document.createElement("div"); track.className = "ganttTrack"; track.style.height = rowHeight+"px";
+    gapPositions.forEach(p=>{
+      const g = document.createElement("div"); g.className = "ganttGap"; g.style.left = p+"%"; track.appendChild(g);
     });
-    const barHead = document.createElement("div"); barHead.className="miniCell miniHead"; barHead.textContent="작업"; grid.appendChild(barHead);
-    order.forEach((slot,idx)=>{
-      const c = document.createElement("div");
-      c.className = "miniCell " + (slot%6===5?"miniHour ":"") + (gapBeforeSet.has(idx)?"gapBefore ":"");
-      const hitCount = slotHit.get(slot) || 0;
-      if(hitCount>0){
-        c.classList.add("miniBar");
-        if(hitCount>=2) c.classList.add("over");
-        const coveringBlocks = blocks.filter(b=> blockSlots(b).includes(slot));
-        // 이 칸에 걸린 작업이 여러 개(=겹침)여도 전부 강조 대상에 포함시킴
-        coveringBlocks.forEach(b=> c.classList.add("item-"+b.itemNo));
-        c.title = coveringBlocks.map(b=>`#${b.itemNo} ${b.title} (${b.start}-${b.end})`).join(" / ");
-        c.addEventListener("mouseenter", ()=> coveringBlocks.forEach(b=>highlightItem(b.itemNo, true)));
-        c.addEventListener("mouseleave", ()=> coveringBlocks.forEach(b=>highlightItem(b.itemNo, false)));
-        // 겹치는 칸을 클릭하면 어느 작업을 복사할지 고르게 함(1건뿐이면 바로 복사)
-        c.addEventListener("click", ()=> coveringBlocks.length===1 ? copyItemErp(coveringBlocks[0].itemNo) : pickItemToCopy(coveringBlocks));
-        const startingHere = blocksByFirstSlot.get(slot) || [];
-        if(startingHere.length){
-          c.style.position = "relative";
-          startingHere.forEach((b,bi)=>{
-            const badge = document.createElement("span"); badge.className="badge";
-            badge.style.left = (2+bi*13)+"px";
-            badge.textContent = b.itemNo;
-            c.appendChild(badge);
-          });
-        }
-      }
-      grid.appendChild(c);
+    posBlocks.forEach(b=>{
+      const el = document.createElement("div"); el.className = "ganttBlock item-"+b.itemNo;
+      const overlapped = blockSlots(b).some(s=> (slotHit.get(s)||0)>=2);
+      if(overlapped) el.classList.add("over");
+      el.style.left = pct(b._left)+"%";
+      el.style.width = Math.max(pct(b._width), 100/total)+"%";
+      el.style.top = (5+b._lane*24)+"px";
+      el.style.height = "19px";
+      el.textContent = "#"+b.itemNo;
+      el.title = `#${b.itemNo} ${b.title} (${b.start}-${b.end})`;
+      el.addEventListener("mouseenter", ()=> highlightItem(b.itemNo, true));
+      el.addEventListener("mouseleave", ()=> highlightItem(b.itemNo, false));
+      el.addEventListener("click", ()=> copyItemErp(b.itemNo));
+      track.appendChild(el);
     });
-    card.appendChild(grid);
-    inner.appendChild(card);
+    row.appendChild(track);
+    wrap.appendChild(row);
   });
 
-  sc.appendChild(inner); root.appendChild(sc);
+  scroller.appendChild(wrap); root.appendChild(scroller);
 }
 
 function highlightItem(no, on){
