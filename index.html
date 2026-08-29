@@ -26,16 +26,18 @@ input,select{border:1px solid #ccd3da;border-radius:8px;padding:9px 10px}
 .stat b{font-size:16px}
 
 .sharedTimelineScroller{overflow-x:auto;border:1px solid #d9dee3;border-radius:10px;-webkit-overflow-scrolling:touch}
-.sharedTimelineInner{min-width:2950px}
+.sharedTimelineInner{min-width:0}
 .workerTimeline{border-bottom:1px solid #d9dee3;background:#fff}
 .workerTimelineTitle{padding:7px 10px;background:#f0f3f5;font-weight:700;font-size:13px}
-.miniGrid{display:grid;grid-template-columns:110px repeat(144,20px);position:relative}
+.miniGrid{display:grid;position:relative}
 .miniCell{height:30px;border-right:1px solid #edf0f2;border-bottom:1px solid #edf0f2;display:flex;align-items:center;justify-content:center;font-size:10px}
 .miniHead{background:#fafbfc;font-weight:700}
 .miniBar{background:#2f80ed;color:#fff;font-weight:900;cursor:pointer;position:relative}
 .miniBar.over{background:#e74c3c}
 .miniBar.hoverlit{outline:2px solid #f5c518;outline-offset:-2px;z-index:2}
 .miniHour{border-right:2px solid #aab2b9}
+.miniCell.gapBefore{border-left:2px dashed #c7cdd3}
+.timelineNotice{font-size:11px;color:#8a93a0;padding:4px 10px 0}
 .nowLine{position:absolute;top:0;bottom:0;width:2px;background:#111;z-index:5;pointer-events:none}
 .badge{position:absolute;top:1px;left:2px;font-size:8px;background:#111;color:#fff;border-radius:3px;padding:0 3px;line-height:12px}
 
@@ -341,13 +343,44 @@ function renderStats(personBlocks){
   $("statOverlap").textContent = overlapCount;
 }
 
+// 모든 근무자를 통틀어 실제로 작업이 있는 슬롯 집합 (하나도 없으면 그 칸은 숨김 대상)
+function computeActiveSlots(personBlocks){
+  const active = new Set();
+  personBlocks.forEach(blocks=>{
+    blocks.forEach(b=> blockSlots(b).forEach(s=> active.add(s)));
+  });
+  return active;
+}
+
 function renderTimelines(personBlocks){
   const root = $("timelines"); root.innerHTML = "";
   if(!personBlocks.size){ root.innerHTML = '<div class="notice">표시할 데이터가 없습니다. 날짜/근무를 선택해 불러오세요.</div>'; return; }
 
+  const fullOrder = Array.from({length:144},(_,k)=>(126+k)%144); // UTC 21:00부터 시작 (기존 도구와 동일)
+  const activeSlots = computeActiveSlots(personBlocks);
+  const order = fullOrder.filter(slot=> activeSlots.has(slot)); // 전원 공란인 칸은 제거
+
+  if(!order.length){ root.innerHTML = '<div class="notice">표시할 작업 시간이 없습니다.</div>'; return; }
+
+  const hiddenCount = fullOrder.length - order.length;
+  if(hiddenCount>0){
+    const notice = document.createElement("div"); notice.className = "timelineNotice";
+    const hrs = Math.round(hiddenCount/6*10)/10;
+    notice.textContent = `전원 공란인 구간(${hrs}시간)은 숨겼습니다. 점선으로 표시된 칸은 이전 칸과 시간이 이어지지 않는 지점입니다.`;
+    root.appendChild(notice);
+  }
+
+  // order 배열에서 이전 슬롯과 연속되지 않는(=건너뛴) 지점의 index 모음
+  const gapBeforeSet = new Set();
+  order.forEach((slot,idx)=>{
+    if(idx===0) return;
+    const prevPos = (order[idx-1]-126+144)%144, curPos = (slot-126+144)%144;
+    if((curPos-prevPos+144)%144 !== 1) gapBeforeSet.add(idx);
+  });
+  const colTemplate = `110px repeat(${order.length},20px)`;
+
   const sc = document.createElement("div"); sc.className = "sharedTimelineScroller";
   const inner = document.createElement("div"); inner.className = "sharedTimelineInner";
-  const order = Array.from({length:144},(_,k)=>(126+k)%144); // UTC 21:00부터 시작 (기존 도구와 동일)
 
   [...personBlocks.keys()].sort((a,b)=> employeeSortKey(a)-employeeSortKey(b) || a.localeCompare(b,"ko")).forEach(name=>{
     const blocks = personBlocks.get(name);
@@ -367,15 +400,19 @@ function renderTimelines(personBlocks){
     card.appendChild(title);
 
     const grid = document.createElement("div"); grid.className = "miniGrid";
+    grid.style.gridTemplateColumns = colTemplate;
     const head = document.createElement("div"); head.className="miniCell miniHead"; head.textContent="UTC"; grid.appendChild(head);
     order.forEach((slot,idx)=>{
-      const c = document.createElement("div"); c.className = "miniCell miniHead " + (idx%6===5?"miniHour ":"");
-      if(idx%6===0) c.textContent = String(Math.floor(slot/6)).padStart(2,"0")+":00";
+      const c = document.createElement("div");
+      c.className = "miniCell miniHead " + (slot%6===5?"miniHour ":"") + (gapBeforeSet.has(idx)?"gapBefore ":"");
+      if(slot%6===0) c.textContent = String(Math.floor(slot/6)).padStart(2,"0")+":00";
+      if(gapBeforeSet.has(idx)) c.title = "이전 시간과 이어지지 않음(공란 구간 생략됨)";
       grid.appendChild(c);
     });
     const barHead = document.createElement("div"); barHead.className="miniCell miniHead"; barHead.textContent="작업"; grid.appendChild(barHead);
     order.forEach((slot,idx)=>{
-      const c = document.createElement("div"); c.className = "miniCell " + (idx%6===5?"miniHour ":"");
+      const c = document.createElement("div");
+      c.className = "miniCell " + (slot%6===5?"miniHour ":"") + (gapBeforeSet.has(idx)?"gapBefore ":"");
       const hitCount = slotHit.get(slot) || 0;
       if(hitCount>0){
         c.classList.add("miniBar");
