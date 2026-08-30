@@ -26,20 +26,16 @@ input,select{border:1px solid #ccd3da;border-radius:8px;padding:9px 10px}
 .stat b{font-size:16px}
 
 .sharedTimelineScroller{overflow-x:auto;border:1px solid #d9dee3;border-radius:10px;-webkit-overflow-scrolling:touch}
-.timelineNotice{font-size:11px;color:#8a93a0;padding:4px 2px 6px}
-.ganttWrap{display:flex;flex-direction:column;background:#fff}
-.ganttHeader{display:flex;background:#fafbfc;border-bottom:1px solid #d9dee3;position:sticky;top:0;z-index:4}
-.ganttName{flex:0 0 116px;width:116px;padding:6px 10px;font-weight:700;font-size:12.5px;display:flex;align-items:center;border-right:1px solid #edf0f2;background:#f7f8f9}
-.ganttHeaderSpacer{color:#8a93a0;font-weight:700;font-size:11px}
-.ganttTrack{position:relative;flex:1;min-height:24px}
-.ganttHeaderTrack{height:24px}
-.ganttHeaderTrack .tick{position:absolute;top:0;bottom:0;border-left:1px solid #e3e7ea;font-size:10px;color:#8a93a0;padding:3px 0 0 4px;white-space:nowrap}
-.ganttRow{display:flex;border-bottom:1px solid #edf0f2}
-.ganttRow:nth-child(odd) .ganttTrack{background:#fcfcfd}
-.ganttBlock{position:absolute;min-width:14px;border-radius:5px;background:#2f80ed;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;box-shadow:0 1px 2px #00000022}
-.ganttBlock.over{background:#e74c3c}
-.ganttBlock.hoverlit{outline:2px solid #f5c518;outline-offset:-2px;z-index:3}
-.ganttGap{position:absolute;top:0;bottom:0;border-left:2px dashed #c7cdd3;pointer-events:none}
+.workerTimeline{border-bottom:1px solid #d9dee3;background:#fff}
+.workerTimelineTitle{padding:7px 10px;background:#f0f3f5;font-weight:700;font-size:13px}
+.miniGrid{display:grid;position:relative}
+.miniCell{height:30px;border-right:1px solid #edf0f2;border-bottom:1px solid #edf0f2;display:flex;align-items:center;justify-content:center;font-size:10px}
+.miniHead{background:#fafbfc;font-weight:700}
+.miniBar{background:#2f80ed;color:#fff;font-weight:900;cursor:pointer;position:relative}
+.miniBar.over{background:#e74c3c}
+.miniBar.hoverlit{outline:2px solid #f5c518;outline-offset:-2px;z-index:2}
+.miniHour{border-right:2px solid #aab2b9}
+.badge{position:absolute;top:1px;left:2px;font-size:8px;background:#111;color:#fff;border-radius:3px;padding:0 3px;line-height:12px}
 
 table.erpTable{border-collapse:collapse;width:100%;font-size:13px}
 table.erpTable th,table.erpTable td{border:1px solid #d9dee3;padding:7px 8px;text-align:left}
@@ -51,6 +47,18 @@ table.erpTable tbody tr.hoverlit{background:#fff2c2}
 .peopleTag{display:inline-block;background:#eef1f4;border-radius:6px;padding:1px 6px;margin:1px;font-size:12px}
 .peopleTag.missing{background:#ffe1de;color:#c0392b}
 .peopleTag.multi{background:#fff3cd;color:#8a6d1a}
+
+.cardCtrl{display:flex;align-items:center;gap:5px;justify-content:center}
+.cardBtn{width:22px;height:22px;padding:0;border-radius:6px;font-weight:900;font-size:13px;line-height:1}
+.cardCount{min-width:14px;text-align:center;font-size:13px;font-weight:700}
+.cardDetailRow td{background:#f7f9fb}
+.cardDetailBox{font-size:12.5px}
+.cardTotalLine{font-weight:700;margin-bottom:5px}
+.cardLine{display:flex;align-items:center;gap:6px;margin:4px 0;flex-wrap:wrap}
+.cardLine input{width:64px;padding:4px 6px;font-size:12.5px}
+.cardLine .copyBtn{padding:4px 8px}
+.cardMatch{color:#2f80ed;font-weight:700;margin-top:6px}
+.cardMismatch{color:#c0392b;font-weight:700;margin-top:6px}
 
 .rosterList{max-height:260px;overflow:auto;border:1px solid #e3e7ea;border-radius:8px}
 .rosterRow{display:grid;grid-template-columns:110px 1fr 60px;gap:6px;padding:6px 8px;border-bottom:1px solid #eef1f4;align-items:center;font-size:13px}
@@ -112,7 +120,7 @@ table.erpTable tbody tr.hoverlit{background:#fff2c2}
   <div class="notice">보기 전용입니다. 행의 "복사" 버튼(또는 그래프의 번호 블록)을 누르면 그 작업에 걸린 인원 수만큼 ERP 행이 한 번에 클립보드에 복사됩니다. 형식: A 사번 · B 공란 · C 날짜 · D 시작시간(4자리) · E 날짜 · F 종료시간(4자리)</div>
   <div class="erpTableWrap" style="margin-top:8px">
     <table class="erpTable">
-      <thead><tr><th style="width:40px">#</th><th>작업내용</th><th>W/O</th><th>M/H (UTC)</th><th>인원</th><th style="width:70px">복사</th></tr></thead>
+      <thead><tr><th style="width:40px">#</th><th>작업내용</th><th>W/O</th><th>M/H (UTC)</th><th>인원</th><th style="width:70px">복사</th><th style="width:90px">카드</th></tr></thead>
       <tbody id="erpBody"></tbody>
     </table>
   </div>
@@ -172,6 +180,8 @@ let roster = [];           // [{id,name}]
 let items = [];            // 현재 조회된 노션 작업들
 let homonymChoice = {};    // { personName: chosenId } - 이 세션 동안만 기억
 let autoTimer = null;
+let currentShift = "ALL";  // 마지막으로 조회한 근무 (D/N/ALL) - 타임라인 표시 범위 결정용
+let cardState = {};        // { [itemId]: { count, minutes:[...] } } - ERP 카드 분할 상태
 
 const $ = (id) => document.getElementById(id);
 
@@ -273,6 +283,7 @@ $("oneAddBtn").addEventListener("click", async ()=>{
 async function loadManhours(){
   const date = $("dateInput").value;
   const shift = $("shiftInput").value;
+  currentShift = shift;
   if(!date){ setStatus($("loadStatus"), "날짜를 선택하세요.", true); return; }
   setStatus($("loadStatus"), "불러오는 중...");
   $("loadBtn").disabled = true;
@@ -343,120 +354,87 @@ function renderStats(personBlocks){
   $("statOverlap").textContent = overlapCount;
 }
 
-// 모든 근무자를 통틀어 실제로 작업이 있는 슬롯 집합 (하나도 없으면 그 칸은 숨김 대상)
-function computeActiveSlots(personBlocks){
-  const active = new Set();
-  personBlocks.forEach(blocks=>{
-    blocks.forEach(b=> blockSlots(b).forEach(s=> active.add(s)));
-  });
-  return active;
+// 근무(D/N/ALL)별로 화면에 표시할 UTC 슬롯 순서를 고정 반환 (공란이어도 압축하지 않음)
+// D: KST 08:00~20:00 = UTC 23:00~11:00 (슬롯 138→65, 72칸)
+// N: KST 20:00~08:00 = UTC 11:00~23:00 (슬롯 66→137, 72칸)
+// ALL: UTC 21:00부터 144칸 전체 (기존 도구와 동일한 시작점)
+function computeSlotOrder(shift){
+  if(shift==="D") return Array.from({length:72},(_,k)=>(138+k)%144);
+  if(shift==="N") return Array.from({length:72},(_,k)=>66+k);
+  return Array.from({length:144},(_,k)=>(126+k)%144);
 }
 
 function renderTimelines(personBlocks){
   const root = $("timelines"); root.innerHTML = "";
   if(!personBlocks.size){ root.innerHTML = '<div class="notice">표시할 데이터가 없습니다. 날짜/근무를 선택해 불러오세요.</div>'; return; }
 
-  const fullOrder = Array.from({length:144},(_,k)=>(126+k)%144); // UTC 21:00부터 시작 (기존 도구와 동일)
-  const activeSlots = computeActiveSlots(personBlocks);
-  const order = fullOrder.filter(slot=> activeSlots.has(slot)); // 전원 공란인 구간은 압축
-
-  if(!order.length){ root.innerHTML = '<div class="notice">표시할 작업 시간이 없습니다.</div>'; return; }
-
-  const hiddenCount = fullOrder.length - order.length;
-  if(hiddenCount>0){
-    const notice = document.createElement("div"); notice.className = "timelineNotice";
-    const hrs = Math.round(hiddenCount/6*10)/10;
-    notice.textContent = `전원 공란인 구간(${hrs}시간)은 압축했습니다. 점선은 시간이 끊기는 지점입니다.`;
-    root.appendChild(notice);
-  }
-
+  const order = computeSlotOrder(currentShift);
   const posOf = new Map(); order.forEach((slot,idx)=> posOf.set(slot, idx));
   const total = order.length;
-  const pct = idx => (idx/total*100);
 
-  // 이전 슬롯과 연속되지 않는(=건너뛴) 지점들의 위치(%)
-  const gapPositions = [];
-  order.forEach((slot,idx)=>{
-    if(idx===0) return;
-    const prevPos = (order[idx-1]-126+144)%144, curPos = (slot-126+144)%144;
-    if((curPos-prevPos+144)%144 !== 1) gapPositions.push(pct(idx));
-  });
-  // 정시(HH:00) 눈금
-  const hourTicks = [];
-  order.forEach((slot,idx)=>{ if(slot%6===0) hourTicks.push({ pct: pct(idx), label: String(Math.floor(slot/6)).padStart(2,"0")+":00" }); });
+  const names = [...personBlocks.keys()].sort((a,b)=> employeeSortKey(a)-employeeSortKey(b) || a.localeCompare(b,"ko"));
 
-  const NAME_W = 116, PX_PER_UNIT = 6; // 압축된 시간 한 칸(10분)당 최소 픽셀
-  const scroller = document.createElement("div"); scroller.className = "sharedTimelineScroller";
-  const wrap = document.createElement("div"); wrap.className = "ganttWrap";
-  wrap.style.minWidth = (NAME_W + Math.max(320, total*PX_PER_UNIT)) + "px";
-
-  // 시간축 헤더 — 근무자마다 반복하지 않고 전체에서 한 번만
-  const header = document.createElement("div"); header.className = "ganttHeader";
-  const headerSpacer = document.createElement("div"); headerSpacer.className = "ganttName ganttHeaderSpacer"; headerSpacer.textContent = "UTC";
-  header.appendChild(headerSpacer);
-  const headerTrack = document.createElement("div"); headerTrack.className = "ganttTrack ganttHeaderTrack";
-  hourTicks.forEach(t=>{
-    const tick = document.createElement("div"); tick.className = "tick"; tick.style.left = t.pct+"%"; tick.textContent = t.label;
-    headerTrack.appendChild(tick);
-  });
-  gapPositions.forEach(p=>{
-    const g = document.createElement("div"); g.className = "ganttGap"; g.style.left = p+"%"; headerTrack.appendChild(g);
-  });
-  header.appendChild(headerTrack);
-  wrap.appendChild(header);
-
-  [...personBlocks.keys()].sort((a,b)=> employeeSortKey(a)-employeeSortKey(b) || a.localeCompare(b,"ko")).forEach(name=>{
+  names.forEach(name=>{
     const blocks = personBlocks.get(name);
 
-    // 압축 좌표계에서 각 작업의 위치(left)/폭(width, 칸 수) 계산
-    const posBlocks = blocks.map(b=>{
-      const idxs = blockSlots(b).map(s=> posOf.get(s));
-      return { ...b, _left: Math.min(...idxs), _width: idxs.length };
-    }).sort((a,b)=> a._left-b._left);
-
-    // 겹치는 작업은 서로 다른 레인(줄)에 쌓아서 가려지지 않게 함
-    const laneEnds = [];
-    posBlocks.forEach(b=>{
-      let lane = laneEnds.findIndex(end => end <= b._left);
-      if(lane===-1){ lane = laneEnds.length; laneEnds.push(b._left+b._width); }
-      else laneEnds[lane] = b._left+b._width;
-      b._lane = lane;
+    // 이 사람 기준, 표시 범위 내 슬롯 인덱스 -> 그 슬롯에 걸린 블록들
+    const slotMap = new Map();
+    blocks.forEach(b=>{
+      blockSlots(b).forEach(s=>{
+        if(!posOf.has(s)) return; // 현재 근무 표시 범위 밖은 표시하지 않음
+        const idx = posOf.get(s);
+        if(!slotMap.has(idx)) slotMap.set(idx, []);
+        slotMap.get(idx).push(b);
+      });
     });
-    const laneCount = Math.max(1, laneEnds.length);
-    const rowHeight = laneCount*24+10;
 
-    // 이 사람 기준 같은 시간대에 작업이 2개 이상 겹치는지(=겹침 표시용)
-    const slotHit = new Map();
-    blocks.forEach(b=> blockSlots(b).forEach(s=> slotHit.set(s,(slotHit.get(s)||0)+1)));
+    const wrapDiv = document.createElement("div"); wrapDiv.className = "workerTimeline";
+    const title = document.createElement("div"); title.className = "workerTimelineTitle"; title.textContent = name;
+    wrapDiv.appendChild(title);
 
-    const row = document.createElement("div"); row.className = "ganttRow";
-    const nameCell = document.createElement("div"); nameCell.className = "ganttName"; nameCell.textContent = name;
-    row.appendChild(nameCell);
+    const scroller = document.createElement("div"); scroller.className = "sharedTimelineScroller";
+    const grid = document.createElement("div"); grid.className = "miniGrid";
+    grid.style.gridTemplateColumns = `repeat(${total}, minmax(26px,1fr))`;
+    grid.style.minWidth = Math.max(320, total*26) + "px";
 
-    const track = document.createElement("div"); track.className = "ganttTrack"; track.style.height = rowHeight+"px";
-    gapPositions.forEach(p=>{
-      const g = document.createElement("div"); g.className = "ganttGap"; g.style.left = p+"%"; track.appendChild(g);
+    order.forEach(slot=>{
+      const head = document.createElement("div");
+      head.className = "miniCell miniHead" + (slot%6===0 ? " miniHour":"");
+      if(slot%6===0) head.textContent = String(Math.floor(slot/6)).padStart(2,"0")+"시";
+      grid.appendChild(head);
     });
-    posBlocks.forEach(b=>{
-      const el = document.createElement("div"); el.className = "ganttBlock item-"+b.itemNo;
-      const overlapped = blockSlots(b).some(s=> (slotHit.get(s)||0)>=2);
-      if(overlapped) el.classList.add("over");
-      el.style.left = pct(b._left)+"%";
-      el.style.width = Math.max(pct(b._width), 100/total)+"%";
-      el.style.top = (5+b._lane*24)+"px";
-      el.style.height = "19px";
-      el.textContent = "#"+b.itemNo;
-      el.title = `#${b.itemNo} ${b.title} (${b.start}-${b.end})`;
-      el.addEventListener("mouseenter", ()=> highlightItem(b.itemNo, true));
-      el.addEventListener("mouseleave", ()=> highlightItem(b.itemNo, false));
-      el.addEventListener("click", ()=> copyItemErp(b.itemNo));
-      track.appendChild(el);
+
+    order.forEach((slot,idx)=>{
+      const cell = document.createElement("div");
+      cell.className = "miniCell" + (slot%6===0 ? " miniHour":"");
+      const hits = slotMap.get(idx);
+      if(hits && hits.length){
+        const uniqItems = [...new Map(hits.map(b=>[b.itemNo,b])).values()];
+        cell.classList.add("miniBar");
+        uniqItems.forEach(b=> cell.classList.add("item-"+b.itemNo));
+        if(uniqItems.length>=2){
+          cell.classList.add("over");
+          cell.textContent = "";
+          const badge = document.createElement("span"); badge.className = "badge"; badge.textContent = uniqItems.length+"건";
+          cell.appendChild(badge);
+        }else{
+          cell.textContent = "#"+uniqItems[0].itemNo;
+        }
+        cell.title = uniqItems.map(b=>`#${b.itemNo} ${b.title} (${b.start}-${b.end})`).join(" / ");
+        cell.addEventListener("mouseenter", ()=> uniqItems.forEach(b=> highlightItem(b.itemNo,true)));
+        cell.addEventListener("mouseleave", ()=> uniqItems.forEach(b=> highlightItem(b.itemNo,false)));
+        cell.addEventListener("click", ()=>{
+          if(uniqItems.length===1) copyItemErp(uniqItems[0].itemNo);
+          else pickItemToCopy(uniqItems);
+        });
+      }
+      grid.appendChild(cell);
     });
-    row.appendChild(track);
-    wrap.appendChild(row);
+
+    scroller.appendChild(grid);
+    wrapDiv.appendChild(scroller);
+    root.appendChild(wrapDiv);
   });
-
-  scroller.appendChild(wrap); root.appendChild(scroller);
 }
 
 function highlightItem(no, on){
@@ -465,10 +443,96 @@ function highlightItem(no, on){
   if(row) row.classList.toggle("hoverlit", on);
 }
 
+/* ---------------- ERP 카드 분할 ---------------- */
+function spanMinutesRaw(sMin,eMin){ return eMin>=sMin ? (eMin-sMin) : (1440-sMin+eMin); }
+function minToHHMM(m){
+  m = ((m%1440)+1440)%1440;
+  return String(Math.floor(m/60)).padStart(2,"0")+String(m%60).padStart(2,"0");
+}
+function taskTotalMinutes(it){
+  return it.mh.reduce((sum,r)=> sum + spanMinutesRaw(hhmmToMin(r.start), hhmmToMin(r.end)), 0);
+}
+function fmtMinutes(m){
+  const h = Math.floor(m/60), mm = m%60;
+  if(h>0 && mm>0) return `${h}시간 ${mm}분`;
+  if(h>0) return `${h}시간`;
+  return `${mm}분`;
+}
+function evenSplit(total,count){
+  const base = Math.floor(total/count);
+  const arr = Array(count).fill(base);
+  arr[count-1] += total - base*count;
+  return arr;
+}
+function getCardState(it){
+  let st = cardState[it.id];
+  if(!st){ st = { count:1, minutes:[taskTotalMinutes(it)] }; cardState[it.id] = st; }
+  return st;
+}
+function setCardCount(it, newCount){
+  newCount = Math.max(1, newCount);
+  const st = getCardState(it);
+  st.count = newCount;
+  st.minutes = evenSplit(taskTotalMinutes(it), newCount);
+}
+// it.mh 여러 구간을 이어붙인 기준으로, 시작(0분)부터 offsetMin만큼 지난 실제 시:분(HHMM)을 구함
+function clockAtOffset(it, offsetMin){
+  let remain = offsetMin;
+  for(const r of it.mh){
+    const s = hhmmToMin(r.start), e = hhmmToMin(r.end);
+    const span = spanMinutesRaw(s,e);
+    if(remain <= span) return minToHHMM(s+remain);
+    remain -= span;
+  }
+  return it.mh.length ? it.mh[it.mh.length-1].end : "0000";
+}
+function rerenderCardDetail(it, st, box){
+  const fresh = buildCardDetail(it, st);
+  box.replaceWith(fresh);
+}
+function buildCardDetail(it, st){
+  const box = document.createElement("div"); box.className = "cardDetailBox";
+  const total = taskTotalMinutes(it);
+
+  const totalLine = document.createElement("div"); totalLine.className = "cardTotalLine";
+  totalLine.textContent = `총 ${fmtMinutes(total)}`;
+  box.appendChild(totalLine);
+
+  let offset = 0;
+  st.minutes.forEach((m,i)=>{
+    const startOffset = offset, endOffset = offset + m; offset = endOffset;
+    const startHHMM = clockAtOffset(it, startOffset), endHHMM = clockAtOffset(it, endOffset);
+
+    const line = document.createElement("div"); line.className = "cardLine";
+    const label = document.createElement("span"); label.textContent = `${i+1}번카드 사용시간:`;
+    const input = document.createElement("input"); input.type = "number"; input.min = "1"; input.value = m;
+    input.addEventListener("change", ()=>{
+      st.minutes[i] = Math.max(1, parseInt(input.value,10)||1);
+      rerenderCardDetail(it, st, box);
+    });
+    const unit = document.createElement("span"); unit.textContent = "분";
+    const copyBtn = document.createElement("button"); copyBtn.type="button"; copyBtn.className="copyBtn secondary"; copyBtn.textContent="복사";
+    copyBtn.addEventListener("click", ()=> copyItemErp(it.no, [{start:startHHMM, end:endHHMM}]));
+
+    line.append(label, input, unit, copyBtn);
+    box.appendChild(line);
+  });
+
+  const sum = st.minutes.reduce((a,b)=>a+b,0);
+  const msg = document.createElement("div");
+  if(sum===total){ msg.className="cardMatch"; msg.textContent="총 시간과 동일합니다."; }
+  else{ msg.className="cardMismatch"; msg.textContent=`총 시간과 다릅니다 (차이 ${fmtMinutes(Math.abs(total-sum))})`; }
+  box.appendChild(msg);
+
+  return box;
+}
+
 /* ---------------- ERP 표 & 복사 ---------------- */
 function renderErpTable(){
   const body = $("erpBody"); body.innerHTML = "";
   items.forEach(it=>{
+    const st = getCardState(it);
+
     const tr = document.createElement("tr"); tr.dataset.no = it.no;
     tr.addEventListener("mouseenter", ()=> highlightItem(it.no, true));
     tr.addEventListener("mouseleave", ()=> highlightItem(it.no, false));
@@ -493,8 +557,26 @@ function renderErpTable(){
     btn.addEventListener("click", ()=> copyItemErp(it.no));
     tdCopy.appendChild(btn);
 
-    tr.append(tdNo, tdTitle, tdWo, tdMh, tdPeople, tdCopy);
+    const tdCard = document.createElement("td");
+    const ctrl = document.createElement("div"); ctrl.className = "cardCtrl";
+    const minusBtn = document.createElement("button"); minusBtn.type="button"; minusBtn.className="cardBtn secondary"; minusBtn.textContent="−";
+    const countSpan = document.createElement("span"); countSpan.className = "cardCount"; countSpan.textContent = st.count;
+    const plusBtn = document.createElement("button"); plusBtn.type="button"; plusBtn.className="cardBtn secondary"; plusBtn.textContent="+";
+    minusBtn.addEventListener("click", ()=>{ if(st.count<=1) return; setCardCount(it, st.count-1); renderErpTable(); });
+    plusBtn.addEventListener("click", ()=>{ setCardCount(it, st.count+1); renderErpTable(); });
+    ctrl.append(minusBtn, countSpan, plusBtn);
+    tdCard.appendChild(ctrl);
+
+    tr.append(tdNo, tdTitle, tdWo, tdMh, tdPeople, tdCopy, tdCard);
     body.appendChild(tr);
+
+    if(st.count > 1){
+      const dtr = document.createElement("tr"); dtr.className = "cardDetailRow";
+      const dtd = document.createElement("td"); dtd.colSpan = 7;
+      dtd.appendChild(buildCardDetail(it, st));
+      dtr.appendChild(dtd);
+      body.appendChild(dtr);
+    }
   });
 }
 
@@ -530,15 +612,16 @@ function pickItemToCopy(coveringBlocks){
   });
 }
 
-async function copyItemErp(no){
+async function copyItemErp(no, overrideRanges){
   const it = items.find(x=>x.no===no);
   if(!it) return;
+  const ranges = overrideRanges || it.mh;
   const dateDot = fmtDateDot($("dateInput").value);
   const lines = [];
   for(const name of it.people){
     const id = await resolvePersonId(name);
     if(!id) return; // 미등록 이름이 있으면 복사 중단(모달에서 이미 안내함)
-    it.mh.forEach(r=>{
+    ranges.forEach(r=>{
       lines.push([id, "", dateDot, r.start, dateDot, r.end].join("\t"));
     });
   }
