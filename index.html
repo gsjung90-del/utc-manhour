@@ -29,7 +29,7 @@ input,select{border:1px solid #ccd3da;border-radius:8px;padding:9px 10px}
 .workerTimeline{border-bottom:1px solid #d9dee3;background:#fff}
 .workerTimelineTitle{padding:7px 10px;background:#f0f3f5;font-weight:700;font-size:13px}
 .miniGrid{display:grid;position:relative}
-.miniCell{height:30px;border-right:1px solid #edf0f2;border-bottom:1px solid #edf0f2;display:flex;align-items:center;justify-content:center;font-size:10px}
+.miniCell{height:24px;border-right:1px solid #edf0f2;border-bottom:1px solid #edf0f2;display:flex;align-items:center;justify-content:center;font-size:9px;overflow:hidden;white-space:nowrap}
 .miniHead{background:#fafbfc;font-weight:700}
 .miniBar{background:#2f80ed;color:#fff;font-weight:900;cursor:pointer;position:relative}
 .miniBar.over{background:#e74c3c}
@@ -394,8 +394,8 @@ function renderTimelines(personBlocks){
 
     const scroller = document.createElement("div"); scroller.className = "sharedTimelineScroller";
     const grid = document.createElement("div"); grid.className = "miniGrid";
-    grid.style.gridTemplateColumns = `repeat(${total}, minmax(26px,1fr))`;
-    grid.style.minWidth = Math.max(320, total*26) + "px";
+    grid.style.gridTemplateColumns = `repeat(${total}, minmax(20px,1fr))`;
+    grid.style.minWidth = Math.max(300, total*20) + "px";
 
     order.forEach(slot=>{
       const head = document.createElement("div");
@@ -404,32 +404,51 @@ function renderTimelines(personBlocks){
       grid.appendChild(head);
     });
 
-    order.forEach((slot,idx)=>{
-      const cell = document.createElement("div");
-      cell.className = "miniCell" + (slot%6===0 ? " miniHour":"");
-      const hits = slotMap.get(idx);
-      if(hits && hits.length){
-        const uniqItems = [...new Map(hits.map(b=>[b.itemNo,b])).values()];
-        cell.classList.add("miniBar");
-        uniqItems.forEach(b=> cell.classList.add("item-"+b.itemNo));
-        if(uniqItems.length>=2){
-          cell.classList.add("over");
-          cell.textContent = "";
-          const badge = document.createElement("span"); badge.className = "badge"; badge.textContent = uniqItems.length+"건";
-          cell.appendChild(badge);
-        }else{
-          cell.textContent = "#"+uniqItems[0].itemNo;
-        }
-        cell.title = uniqItems.map(b=>`#${b.itemNo} ${b.title} (${b.start}-${b.end})`).join(" / ");
-        cell.addEventListener("mouseenter", ()=> uniqItems.forEach(b=> highlightItem(b.itemNo,true)));
-        cell.addEventListener("mouseleave", ()=> uniqItems.forEach(b=> highlightItem(b.itemNo,false)));
-        cell.addEventListener("click", ()=>{
-          if(uniqItems.length===1) copyItemErp(uniqItems[0].itemNo);
-          else pickItemToCopy(uniqItems);
-        });
+    // 같은 작업(들)이 연속된 슬롯은 한 칸으로 합쳐서 "#2 #2 #2..." 반복 대신 하나의 넓은 막대로 표시
+    const slotItems = order.map((slot,idx)=> slotMap.get(idx) || null);
+    let i = 0;
+    while(i < total){
+      const hits = slotItems[i];
+      const sig = hits ? hits.map(b=>b.itemNo).sort((a,b)=>a-b).join(",") : "";
+      if(!hits){
+        const slot = order[i];
+        const cell = document.createElement("div");
+        cell.className = "miniCell" + (slot%6===0 ? " miniHour":"");
+        grid.appendChild(cell);
+        i++;
+        continue;
       }
+      let j = i+1;
+      while(j<total){
+        const h2 = slotItems[j];
+        const sig2 = h2 ? h2.map(b=>b.itemNo).sort((a,b)=>a-b).join(",") : "";
+        if(sig2 !== sig) break;
+        j++;
+      }
+      const runLen = j - i;
+      const uniqItems = [...new Map(hits.map(b=>[b.itemNo,b])).values()];
+      const cell = document.createElement("div");
+      cell.className = "miniCell miniBar";
+      cell.style.gridColumn = `span ${runLen}`;
+      uniqItems.forEach(b=> cell.classList.add("item-"+b.itemNo));
+      if(uniqItems.length>=2){
+        cell.classList.add("over");
+        const badge = document.createElement("span"); badge.className = "badge"; badge.textContent = uniqItems.length+"건";
+        cell.appendChild(badge);
+      }else{
+        cell.textContent = "#"+uniqItems[0].itemNo;
+      }
+      const rangeStart = minToHHMM(order[i]*10), rangeEnd = minToHHMM((order[j-1]+1)*10);
+      cell.title = uniqItems.map(b=>`#${b.itemNo} ${b.title}`).join(" / ") + ` (${rangeStart}-${rangeEnd})`;
+      cell.addEventListener("mouseenter", ()=> uniqItems.forEach(b=> highlightItem(b.itemNo,true)));
+      cell.addEventListener("mouseleave", ()=> uniqItems.forEach(b=> highlightItem(b.itemNo,false)));
+      cell.addEventListener("click", ()=>{
+        if(uniqItems.length===1) copyItemErp(uniqItems[0].itemNo);
+        else pickItemToCopy(uniqItems);
+      });
       grid.appendChild(cell);
-    });
+      i = j;
+    }
 
     scroller.appendChild(grid);
     wrapDiv.appendChild(scroller);
